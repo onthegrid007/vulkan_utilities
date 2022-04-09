@@ -1,12 +1,22 @@
+namespace VulkanUtilities {
+	inline bool VulkanRuntimeDebug = true; 
+	inline bool VulkanRuntimeVSync = true; 
+}
 #ifndef VULKAN_COMMON_H
 #define VULKAN_COMMON_H
 
 #include "platformdetection.h"
-#ifndef GLM_SETUP_INCLUDED
-	#error "GLM must be included BEFORE including any files from VulkanUtilities!"
-#endif
 
-namespace VulkanUtilities { inline bool VulkanRuntimeDebug = true; }
+namespace VulkanUtilities {
+	
+	typedef struct {
+		VkInstance instance;
+		VkSurface surface;
+		std::vector<std::string> VkDeviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME }
+		VkPhysicalDevice pd;
+
+	} VulkanHLInstance;
+}
 #ifdef VULKAN_PLATFORM_WINDOWS
 	#include <windows.h>
     #define VK_USE_PLATFORM_WIN32_KHR
@@ -16,6 +26,7 @@ namespace VulkanUtilities { inline bool VulkanRuntimeDebug = true; }
 	#include "vendor/volk/volk.h"
 #endif
 
+#include <iostream>
 #define VULK_UTILITIES_STR "[VulkanUtilities]"
 #define VULK_LOG_ERROR_STR "[ERROR]"
 #define VKCALL_LOG_ERROR(call, res, file, line, funcsig) VULK_UTILITIES_STR + VULK_LOG_ERROR_STR + " In file: " + #file " : line " + #line + " :: " + #funcsig + " --> " + #call + " was unsucessful with error code: " + VkResultEnumToString(res)
@@ -27,6 +38,8 @@ namespace VulkanUtilities { inline bool VulkanRuntimeDebug = true; }
 	}\
 }
 
+#include <vector>
+#include <optional>
 #include "VulkanBuffer.h"
 #include "VulkanVertexPipeline.h"
 #include "VulkanIndexPipeline.h"

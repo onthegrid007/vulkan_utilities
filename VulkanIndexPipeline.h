@@ -1,7 +1,7 @@
 #ifndef VULKANINDEXPIPELINE_H_
 #define VULKANINDEXPIPELINE_H_
 
-typedef struct VulkanIndexPipeline_t {
+typedef struct {
 	VkPipeline pipeline;
 	VkPipelineLayout layout;
 	VkPipelineCache cache;

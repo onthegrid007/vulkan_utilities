@@ -2,7 +2,7 @@
 	#ifdef _WIN64
 		#define VULKAN_PLATFORM_WINDOWS
 	#else
-		#error "x86 Builds are not supported!"
+		#error "x86/32 Builds are not supported!"
 	#endif
 #elif defined(__APPLE__) || defined(__MACH__)
 	#include <TargetConditionals.h>
@@ -22,4 +22,8 @@
 #else
 	#define VULKAN_PLATFORM_UNDEFINED
 	#error "Unknown platform!"
+#endif
+
+#ifndef GLM_SETUP_INCLUDED
+	#error "GLM must be included BEFORE including any files from VulkanUtilities!"
 #endif

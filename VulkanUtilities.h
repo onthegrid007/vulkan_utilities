@@ -5,7 +5,6 @@
 #include <set>
 
 namespace VulkanUtilities {
-
 	struct QueueFamilyIndices {
 		optional<uint32_t> graphicsFamily;
 		optional<uint32_t> presentFamily;
@@ -17,8 +16,8 @@ namespace VulkanUtilities {
 
 	struct SwapChainSupportDetails {
 		VkSurfaceCapabilitiesKHR capabilities;
-		vector<VkSurfaceFormatKHR> formats;
-		vector<VkPresentModeKHR> presentModes;
+		std::vector<VkSurfaceFormatKHR> formats;
+		std::vector<VkPresentModeKHR> presentModes;
 	};
 
 	inline string VkResultEnumToString(VkResult& result) {
@@ -80,9 +79,9 @@ namespace VulkanUtilities {
 	}
 
 	inline void printPDProps(VkPhysicalDeviceProperties& props) {
-		cout << "Device Name: " << props.deviceName << endl;
-		cout << "Driver Version: " << props.driverVersion << endl;
-		cout << "Device Type: " << VkPhysicalDeviceTypeEnumToString(props.deviceType) << endl;
+		std::cout << "Device Name: " << props.deviceName << std::endl;
+		std::cout << "Driver Version: " << props.driverVersion << std::endl;
+		std::cout << "Device Type: " << VkPhysicalDeviceTypeEnumToString(props.deviceType) << std::endl;
 	}
 
 	inline QueueFamilyIndices findQueueFamilies(VkPhysicalDevice& device, VkSurfaceKHR& surface) {
@@ -91,7 +90,7 @@ namespace VulkanUtilities {
 		uint32_t queueFamilyCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, 0);
 
-		vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
 		int i = 0;
@@ -110,22 +109,20 @@ namespace VulkanUtilities {
 			if (indices.isComplete()) {
 				break;
 			}
-
 			i++;
 		}
-
 		return indices;
 	}
 
-	inline bool checkDeviceExtensionSupport(VkPhysicalDevice& pd, vector<const char*>& deviceExtensions) {
+	inline bool checkDeviceExtensionSupport(VkPhysicalDevice& pd, std::vector<const char*>& deviceExtensions) {
 		uint32_t extensionCount;
 		vkEnumerateDeviceExtensionProperties(pd, 0, &extensionCount, 0);
-		vector<VkExtensionProperties> availableExtensions(extensionCount);
+		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
 		vkEnumerateDeviceExtensionProperties(pd, 0, &extensionCount, availableExtensions.data());
 
-		set<string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+		std::set<string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
 
-		for (const auto& extension : availableExtensions)
+		for(const auto& extension : availableExtensions)
 			requiredExtensions.erase(extension.extensionName);
 
 		return requiredExtensions.empty();
@@ -154,7 +151,7 @@ namespace VulkanUtilities {
 		return details;
 	}
 
-	inline bool isDeviceSuitable(VkPhysicalDevice& pd, vector<const char*>& deviceExtensions, VkSurfaceKHR& surface) {
+	inline bool isDeviceSuitable(VkPhysicalDevice& pd, std::vector<const char*>& deviceExtensions, VkSurfaceKHR& surface) {
 		QueueFamilyIndices indices = findQueueFamilies(pd, surface);
 
 		bool extensionsSupported = checkDeviceExtensionSupport(pd, deviceExtensions);
@@ -171,44 +168,44 @@ namespace VulkanUtilities {
 		return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
 	}
 
-	inline void printPhysicalDevices(vector<VkPhysicalDevice>& devices) {
+	inline void printPhysicalDevices(std::vector<VkPhysicalDevice>& devices) {
 		for(uint32_t i = 0; i < devices.size(); i++) {
 			VkPhysicalDeviceProperties props;
 			vkGetPhysicalDeviceProperties(devices[i], &props);
-			cout << "Physical Device: " << i << endl;
+			std::cout << "Physical Device: " << i << std::endl;
 			printPDProps(props);
-			cout << endl;
+			std::cout << std::endl;
 		}
 	}
 
-	inline bool selectPDwDT(VkPhysicalDevice& pd, VkPhysicalDeviceType&& dt, vector<const char*>& deviceExtensions, VkSurfaceKHR& surface) {
-		VkPhysicalDeviceProperties props;
-		vkGetPhysicalDeviceProperties(dt, &props);	
-		return (props.deviceType == dt && isDeviceSuitable(pd, deviceExtensions, surface));
+	inline bool selectPDwDT(std::vector<VkPhysicalDevice>& pdevices, VkPhysicalDeviceType&& dt, std::vector<const char*>& deviceExtensions, VkSurfaceKHR& surface) {
+		for(auto& pd : pdevices) {
+			VkPhysicalDeviceProperties props;
+			vkGetPhysicalDeviceProperties(pd, &props);	
+			return (props.deviceType == dt && isDeviceSuitable(pd, deviceExtensions, surface));
+		}
 	}
 
-	inline VkPhysicalDevice pickPhysicalDevice(vector<VkPhysicalDevice>& devices, vector<const char*>& deviceExtensions, VkSurfaceKHR& surface) {
+	inline VkPhysicalDevice pickPhysicalDevice(std::vector<VkPhysicalDevice>& devices, std::vector<const char*>& deviceExtensions, VkSurfaceKHR& surface) {
 		if(VulkanRuntimeDebug) printPhysicalDevices(devices);
-		for(uint32_t i = 0; i < devices.size(); i++) {
-			if(selectPDwDT(devices[i], VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU, deviceExtensions, surface)) {
-				if(VulkanRuntimeDebug) cout << "Picking Discrete GPU ID: " << i << endl << endl;
-				return devices[i];
-			}
+		// Dedciated GPU first
+		if(selectPDwDT(devices, VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU, deviceExtensions, surface)) {
+			if(VulkanRuntimeDebug) std::cout << "Picking Discrete GPU ID: " << i << std::endl << std::endl;
+			return devices[i];
 		}
-		for(uint32_t i = 0; i < devices.size(); i++) {
-			if(selectPDwDT(devices[i], VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU, deviceExtensions, surface)) {
-				if(VulkanRuntimeDebug) cout << "Picking Integrated GPU ID: " << i << endl << endl;
-				return devices[i];
-			}
+		// Intigrated GPU second
+		if(selectPDwDT(devices, VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU, deviceExtensions, surface)) {
+			if(VulkanRuntimeDebug) std::cout << "Picking Integrated GPU ID: " << i << std::endl << std::endl;
+			return devices[i];
 		}
-		for(uint32_t i = 0; i < devices.size(); i++) {
-			if(selectPDwDT(devices[i], VK_PHYSICAL_DEVICE_TYPE_OTHER, deviceExtensions, surface)) {
-				if(VulkanRuntimeDebug) cout << "Picking Other Device ID: " << i << endl << endl;
-				return devices[i];
-			}
+		// Other sutible device third
+		if(selectPDwDT(devices, VK_PHYSICAL_DEVICE_TYPE_OTHER, deviceExtensions, surface)) {
+			if(VulkanRuntimeDebug) std::cout << "Picking Other Device ID: " << i << std::endl << std::endl;
+			return devices[i];
 		}
+		// None sutable device but operational device does exists forth
 		if(devices.size() > 0) {
-			if(VulkanRuntimeDebug) cout << "No suitable device found! Picking fallback device: " << devices.size() - 1 << endl;
+			if(VulkanRuntimeDebug) std::cout << "No Suitable Device Found! Picking Fallback Device ID: " << devices.size() - 1 << std::endl;
 			return devices[devices.size() - 1];
 		}
 		throw "No physical devices avaliable!";
@@ -221,14 +218,16 @@ namespace VulkanUtilities {
 		VkInstanceCreateInfo createInfo = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
 		appInfo.apiVersion = VK_API_VERSION;
 		createInfo.pApplicationInfo = &appInfo;
-	//	uint32_t extensionCount;
-	//	VKCall(vkEnumerateInstanceExtensionProperties(0, &extensionCount, 0));
-	//	vector<VkExtensionProperties> extensionProperties(extensionCount);
-	//	VKCall(vkEnumerateInstanceExtensionProperties(0, &extensionCount, extensionProperties.data()));
-		vector<const char*> extensionLayers;
-	//	for(auto& property : extensionProperties)
-	//		LOG(property.extensionName);
-	//		extensionLayers.emplace_back(property.extensionName);
+/*
+	uint32_t extensionCount;
+	VKCall(vkEnumerateInstanceExtensionProperties(0, &extensionCount, 0));
+	std::vector<VkExtensionProperties> extensionProperties(extensionCount);
+	VKCall(vkEnumerateInstanceExtensionProperties(0, &extensionCount, extensionProperties.data()));
+	std::vector<const char*> extensionLayers;
+	for(auto& property : extensionProperties)
+		LOG(property.extensionName);
+		extensionLayers.emplace_back(property.extensionName);
+*/
 	#if VULKAN_PLATFORM_WINDOWS
 		extensionLayers.emplace_back("VK_KHR_surface");
 		extensionLayers.emplace_back("VK_KHR_win32_surface");
@@ -238,12 +237,15 @@ namespace VulkanUtilities {
 	createInfo.enabledExtensionCount = extensionLayers.size();
 
 	if(VulkanRuntimeDebug) {
-		vector<const char*> debugLayers = {
+		std::vector<const char*> debugLayers = {
 			"VK_LAYER_KHRONOS_validation"
 		};
 
 		createInfo.ppEnabledLayerNames = debugLayers.data();
 		createInfo.enabledLayerCount = debugLayers.size();
+	}
+	else {
+		createInfo.enabledLayerCount = 0;
 	}
 
 		VkInstance vkInstance;
@@ -253,10 +255,10 @@ namespace VulkanUtilities {
 		return vkInstance;
 	}
 
-	inline VkPhysicalDevice getPhysicalDevice(VkInstance& instance, vector<const char*>& deviceExtensions, VkSurfaceKHR& surface) {
+	inline VkPhysicalDevice getPhysicalDevice(VkInstance& instance, std::vector<const char*>& deviceExtensions, VkSurfaceKHR& surface) {
 		uint32_t pdCount;
 		VKCall(vkEnumeratePhysicalDevices(instance, &pdCount, 0));
-		vector<VkPhysicalDevice> physicalDevices(pdCount);
+		std::vector<VkPhysicalDevice> physicalDevices(pdCount);
 		VKCall(vkEnumeratePhysicalDevices(instance, &pdCount, physicalDevices.data()));
 		VkPhysicalDevice pd = pickPhysicalDevice(physicalDevices, deviceExtensions, surface);
 		assert(pd);
@@ -266,7 +268,7 @@ namespace VulkanUtilities {
 	inline uint32_t getGraphicsQueueFamily(VkPhysicalDevice& pd) {
 		uint32_t propertiesCount;
 		vkGetPhysicalDeviceQueueFamilyProperties(pd, &propertiesCount, 0);
-		vector<VkQueueFamilyProperties> properties(propertiesCount);
+		std::vector<VkQueueFamilyProperties> properties(propertiesCount);
 		vkGetPhysicalDeviceQueueFamilyProperties(pd, &propertiesCount, properties.data());
 		for(uint32_t i = 0; i < properties.size(); i++)
 			if(properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
@@ -275,7 +277,7 @@ namespace VulkanUtilities {
 		return VK_QUEUE_FAMILY_IGNORED;
 	}
 
-	inline VkDevice createDevice(VkPhysicalDevice& pd, vector<const char*>& extensions, uint32_t familyIndex) {
+	inline VkDevice createDevice(VkPhysicalDevice& pd, std::vector<const char*>& extensions, uint32_t familyIndex) {
 		VkDeviceQueueCreateInfo createQueueInfo = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
 		VkDeviceCreateInfo createInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
 
@@ -333,14 +335,16 @@ namespace VulkanUtilities {
 	}
 
 	inline VkSurfaceKHR createSurface(VkInstance& instance, Window& window) {
-	#ifdef VK_USE_PLATFORM_WIN32_KHR
+	#ifdef VULKAN_PLATFORM_WINDOWS
 		VkWin32SurfaceCreateInfoKHR createInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
 		auto& hinstance = window.GetHInstance();
 		hinstance = GetModuleHandle(0);
 		createInfo.hinstance = hinstance;
 		createInfo.hwnd = glfwGetWin32Window(window.GetGLFWWindow());
 		VkSurfaceKHR surface;
-		VKCall(((PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR"))(instance, &createInfo, 0, &surface));
+		VKCall(vkCreateWin32SurfaceKHR(instance, &createInfo, 0, &surface));
+		// Bug -- test if fixed -OTG
+		//VKCall(((PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR"))(instance, &createInfo, 0, &surface));
 		assert(surface);
 		return surface;
 	#else
@@ -348,11 +352,11 @@ namespace VulkanUtilities {
 	#endif
 	}
 
-	inline VkFormat getSwapchainFormat(VkPhysicalDevice& pd, VkSurfaceKHR surface) {
+	inline VkFormat getSwapchainFormat(VkSurfaceKHR& surface, VkPhysicalDevice& pd) {
 		uint32_t formatCount;
 		VKCall(vkGetPhysicalDeviceSurfaceFormatsKHR(pd, surface, &formatCount, 0));
 		assert(formatCount > 0);
-		vector<VkSurfaceFormatKHR> formats(formatCount);
+		std::vector<VkSurfaceFormatKHR> formats(formatCount);
 		VKCall(vkGetPhysicalDeviceSurfaceFormatsKHR(pd, surface, &formatCount, formats.data()));
 		if (formatCount == 1 && formats[0].format == VK_FORMAT_UNDEFINED)
 			return VK_FORMAT_R8G8B8A8_UNORM;
@@ -364,36 +368,40 @@ namespace VulkanUtilities {
 		return formats[0].format;
 	}
 
-	inline VkSwapchainKHR createSwapChain(VkPhysicalDevice& pd, VkSurfaceKHR surface, VkFormat format, uint32_t width, uint32_t height, uint32_t* faimlyIndex, VkDevice& device, bool VSyncEnabled) {
-		VkSwapchainCreateInfoKHR createInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
-		VkSurfaceCapabilitiesKHR surfCaps = {};
-		VKCall(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pd, surface, &surfCaps));
+	template<typename T>
+	inline T createSwapChain(VkPhysicalDevice& pd, VkSurfaceKHR surface, VkFormat format, uint32_t width, uint32_t height, uint32_t* faimlyIndex, VkDevice& device, bool VSyncEnabled, bool clipped, T* oldSc = VK_NULL_HANDLE) {
+		switch(typeid(T)) {
+			case typeid(VkSwapchainKHR):
+			VkSwapchainCreateInfoKHR createInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
+			VkSurfaceCapabilitiesKHR surfCaps = {};
+			VKCall(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pd, surface, &surfCaps));
 
-		createInfo.surface = surface;
-		createInfo.minImageCount = surfCaps.minImageCount;
-		createInfo.imageFormat = format;
-		createInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-		createInfo.imageArrayLayers = 1;
-		createInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			createInfo.surface = surface;
+			createInfo.minImageCount = surfCaps.minImageCount;
+			createInfo.imageFormat = format;
+			createInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+			createInfo.imageArrayLayers = 1;
+			createInfo.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		createInfo.queueFamilyIndexCount = 0;
-		createInfo.pQueueFamilyIndices = faimlyIndex;
-		createInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-		createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+			createInfo.queueFamilyIndexCount = 0;
+			createInfo.pQueueFamilyIndices = faimlyIndex;
+			createInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+			createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 
-		createInfo.presentMode = VSyncEnabled ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
+			createInfo.presentMode = VulkanRuntimeVSync ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
 
-		createInfo.clipped = VK_TRUE;
-		createInfo.oldSwapchain = VK_NULL_HANDLE;
+			createInfo.clipped = cliped;
+			createInfo.oldSwapchain = oldSc;
 
-		createInfo.imageExtent.width = width;
-		createInfo.imageExtent.height = height;
+			createInfo.imageExtent.width = width;
+			createInfo.imageExtent.height = height;
 
-		VkSwapchainKHR swapChain;
-		VKCall(vkCreateSwapchainKHR(device, &createInfo, 0, &swapChain))
-		assert(swapChain);
-		return swapChain;
+			VkSwapchainKHR swapChain;
+			VKCall(vkCreateSwapchainKHR(device, &createInfo, 0, &swapChain))
+			assert(swapChain);
+			return swapChain;		
+		}
 	}
 
 	inline VkSemaphore createSemaphore(VkDevice& device) {
@@ -405,8 +413,7 @@ namespace VulkanUtilities {
 	}
 
 	inline VkFence createFence(VkDevice& device) {
-		VkFenceCreateInfo createInfo{};
-		createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		VkFenceCreateInfo createInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 		createInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 		VkFence fence;
 		VKCall(vkCreateFence(device, &createInfo, 0, &fence));
@@ -435,7 +442,8 @@ namespace VulkanUtilities {
 		return commandBuffer;
 	}
 
-	inline VkRenderPass createRenderPass(VkDevice& device, VkFormat colorFormat, VkFormat depthFormat) {
+	inline VkRenderPass createRenderPass(VkFormat colorFormat, VkFormat depthFormat, VkDevice& device) {
+		// Color Attachment
 		VkAttachmentDescription attachments[2] = {};
 		attachments[0].flags = VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT;
 		attachments[0].format = colorFormat;
@@ -447,6 +455,7 @@ namespace VulkanUtilities {
 		attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
+		// Depth Attachment
 		attachments[1].flags = VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT;
 		attachments[1].format = depthFormat;
 		attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -515,7 +524,7 @@ namespace VulkanUtilities {
 		createInfo.image = image;
 		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		createInfo.format = format;
-		createInfo.subresourceRange.aspectMask = aspectFlag;//VK_IMAGE_ASPECT_COLOR_BIT;
+		createInfo.subresourceRange.aspectMask = aspectFlag;
 		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -536,7 +545,7 @@ namespace VulkanUtilities {
 			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
 				return i;
 
-		throw "Failed to find suitable memory type!";
+		throw "Failed to find suitable memory type on device!";
 		exit(EXIT_FAILURE);
 	}
 
@@ -544,8 +553,8 @@ namespace VulkanUtilities {
 		VulkanBuffer buffer = {};
 		assert(size > 0);
 		buffer.size = size;
-		VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 
+		VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
 		bufferInfo.size = buffer.size;
 		bufferInfo.usage = usage;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -568,6 +577,7 @@ namespace VulkanUtilities {
 	}
 
 	inline VkDescriptorPool createDescriptorPool(VkDevice& device) {
+		// Dynamic decriptor pools?!?!?
 		VkDescriptorPoolSize poolSizes[2] = {
 				{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_RENDER_OBJECTS },
 				{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_RENDER_OBJECTS }
@@ -812,9 +822,9 @@ namespace VulkanUtilities {
 		VkDevice& device,
 		VkSurfaceKHR& surface,
 		uint32_t& familyIndex,
-		vector<VkImage>& SwapChainImages,
-		vector<VkImageView>& SwapChainImageViews,
-		vector<VkFramebuffer>& SwapChainFrameBuffers,
+		std::vector<VkImage>& SwapChainImages,
+		std::vector<VkImageView>& SwapChainImageViews,
+		std::vector<VkFramebuffer>& SwapChainFrameBuffers,
 		VkFormat& format,
 		VkRenderPass& RenderPass,
 		VkFormat& depthFormat,
@@ -1051,7 +1061,7 @@ namespace VulkanUtilities {
 		vkUnmapMemory(device, buffer.memory);
 	}
 
-	inline VulkanBuffer createVertexBuffer(VkPhysicalDevice& pd, VkDevice& device, VkCommandPool& commandPool, VkQueue& queue, vector<Vertex>& vertices) {
+	inline VulkanBuffer createVertexBuffer(VkPhysicalDevice& pd, VkDevice& device, VkCommandPool& commandPool, VkQueue& queue, std::vector<Vertex>& vertices) {
 		VulkanBuffer stagingBuffer = createBuffer(pd, device, vertices.size() * sizeof(Vertex), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 		VulkanMemoryDataMapping(device, stagingBuffer, vertices.data());
@@ -1073,7 +1083,7 @@ namespace VulkanUtilities {
 		vkDestroyPipeline(device, pipeline.pipeline, 0);
 	}
 
-	inline VkFormat findSupportedFormat(VkPhysicalDevice& pd, const vector<VkFormat>&& candidates, VkImageTiling&& tiling, VkFormatFeatureFlags&& features) {
+	inline VkFormat findSupportedFormat(VkPhysicalDevice& pd, const std::vector<VkFormat>&& candidates, VkImageTiling&& tiling, VkFormatFeatureFlags&& features) {
 		for(auto& format : candidates) {
 			VkFormatProperties props;
 			vkGetPhysicalDeviceFormatProperties(pd, format, &props);
